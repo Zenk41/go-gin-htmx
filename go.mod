@@ -1,4 +1,4 @@
-module mymodule
+module "github.com/Zenk41/go-gin-htmx"
 
 go 1.20
 

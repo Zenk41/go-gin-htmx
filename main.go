@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"log"
-	"mymodule/middlewares"
+	"github.com/Zenk41/go-gin-htmx/middlewares"
 	"os"
 
 	"github.com/gin-gonic/gin"
