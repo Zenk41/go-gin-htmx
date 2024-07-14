@@ -1,6 +1,8 @@
-module "github.com/Zenk41/go-gin-htmx"
+module github.com/Zenk41/go-gin-htmx
 
-go 1.20
+go 1.21
+
+toolchain go1.21.11
 
 require (
 	cloud.google.com/go v0.115.0 // indirect
@@ -12,6 +14,7 @@ require (
 	cloud.google.com/go/longrunning v0.5.7 // indirect
 	cloud.google.com/go/storage v1.43.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible // indirect
+	github.com/a-h/templ v0.2.747 // indirect
 	github.com/bytedance/sonic v1.11.9 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
