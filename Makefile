@@ -1,4 +1,4 @@
-run: build
+run: tailwind build-in-nix
 	@./bin/app
 
 install: 
@@ -13,8 +13,19 @@ tailwind:
 	@tailwindcss -i styles/input.css -o public/globals.css
 
 templ:
-	@templ generate --watch --proxy=http://localhost:3000
+	@templ generate --watch --proxy=http://localhost:8080
 
 build:	
 	@templ generate views
+	@go build -o bin/app main.go
+
+nix-templ:
+	@nix run github.com/a-h/templ generate --watch --proxy=http://localhost:8080
+
+build-in-nix:
+	# for anything other than nix	
+	# @templ generate views
+	
+	# for nix 
+	@nix run github:a-h/templ generate views
 	@go build -o bin/app main.go
