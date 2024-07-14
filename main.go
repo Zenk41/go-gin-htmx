@@ -3,8 +3,11 @@ package main
 import (
 	"flag"
 	"log"
-	"github.com/Zenk41/go-gin-htmx/middlewares"
 	"os"
+
+	"github.com/Zenk41/go-gin-htmx/handlers"
+	"github.com/Zenk41/go-gin-htmx/middlewares"
+	"github.com/Zenk41/go-gin-htmx/views/home"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -29,21 +32,30 @@ func main() {
 
 	route := Routes()
 
+	route.SetTrustedProxies(nil)
+
 	if err := route.Run(*httpAddr); err != nil {
 		log.Fatalf("Failed to run server: %v", err)
 	}
 }
 
 func Routes() *gin.Engine {
-	router := gin.New()                         // Create a new gin router without default middleware
-	router.Use(gin.Recovery())                  // Add recovery middleware for panic recovery
-	router.Use(middlewares.StructuredLogger()) // Apply logging middleware
+	router := gin.New()                        // Create a new gin router without default middleware
+	router.Use(gin.Recovery())                 // Add recovery middleware for panic recovery
+	router.Use(middlewares.StructuredLogger()) // Azpply logging middleware
+
+
+	router.Static("/public", "./public")
 
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"aku": "kamu",
 		})
 	})
+
+	router.GET("/home", handlers.Make(func(ctx *gin.Context) error {
+		return handlers.Render(ctx, home.Index())
+	}))
 
 	return router
 }
