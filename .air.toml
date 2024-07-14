@@ -1,0 +1,28 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  bin = "./tmp/main"
+  cmd = "nix run github:a-h/templ generate && tailwindcss -i styles/input.css -o public/globals.css && go build -tags dev -o ./tmp/main ."
+  delay = 20
+  exclude_dir = ["assets", "node_modules", "tmp", "vendor"]
+  exclude_regex = ["_test.go", ".*_templ.go"]
+  exclude_unchanged = false
+  follow_symlink = false
+  include_ext = ["go", "html", "templ", "tmpl", "tpl"]
+  kill_delay = "0s"
+  log = "build-errors.log"
+  send_interrupt = false
+  stop_on_error = true 
+
+[color]
+  build = "yellow"
+  main = "magenta"
+  runner = "green"
+  watcher = "cyan"
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = false 
