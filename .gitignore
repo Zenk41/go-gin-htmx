@@ -6,3 +6,6 @@ packages/*/README.md
 *.log
 .env
 .idx
+bin
+*_templ.go
+tmp
