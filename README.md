@@ -10,7 +10,7 @@ A simple web application to manage to-do tasks, built with Golang, Gin framework
 
 ## Technology Stack
 
-- **Frontend:** HTML, htmx
+- **Frontend:** HTML, htmx, templ
 - **Backend:** Golang, Gin
 - **Database:** Firebase Firestore
 - **Authentication:** Firebase Authentication
@@ -36,3 +36,4 @@ A simple web application to manage to-do tasks, built with Golang, Gin framework
    ```bash
    git clone https://github.com/Zenk41/go-gin-htmx.git
    cd go-gin-htmx
+
