@@ -7,6 +7,7 @@ import (
 
 	"github.com/Zenk41/go-gin-htmx/handlers"
 	"github.com/Zenk41/go-gin-htmx/middlewares"
+	"github.com/Zenk41/go-gin-htmx/models"
 	"github.com/Zenk41/go-gin-htmx/views/home"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,12 @@ func main() {
 	gin.SetMode(gin.DebugMode) // Ensure gin is in debug mode
 	gin.DefaultWriter = os.Stdout
 
+	client, err := models.CreateClient(os.Getenv("FIREBASE_PROJECTID"), os.Getenv("FIREBASE_APIKEY"))
+	if err != nil {
+		log.Fatalf("Failed to create Firestore client: %v", err)
+	}
+	defer client.Close()
+
 	route := Routes()
 
 	route.SetTrustedProxies(nil)
@@ -44,10 +51,9 @@ func Routes() *gin.Engine {
 	router.Use(gin.Recovery())                 // Add recovery middleware for panic recovery
 	router.Use(middlewares.StructuredLogger()) // Azpply logging middleware
 
-
 	router.Static("/public", "./public")
 
-	router.GET("/", func(c *gin.Context) {
+	router.GET("/test", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"aku": "kamu",
 		})
@@ -56,6 +62,10 @@ func Routes() *gin.Engine {
 	router.GET("/home", handlers.Make(func(ctx *gin.Context) error {
 		return handlers.Render(ctx, home.Index())
 	}))
+
+	router.GET("/homes", func(ctx *gin.Context) {
+		handlers.Render(ctx, home.Index())
+	})
 
 	return router
 }
