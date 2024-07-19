@@ -1,0 +1,15 @@
+package validates
+
+import ()
+
+templ ValidateEmail(isEmailValid bool) {
+	if isEmailValid {
+		<div id="email-status">
+			<span>✅</span>
+		</div>
+	} else {
+		<div id="email-status" class="tooltip tooltip-left" data-tip="Not Valid Email Address">
+			<span>❌</span>
+		</div>
+	}
+}
