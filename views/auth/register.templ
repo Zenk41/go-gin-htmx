@@ -1,0 +1,42 @@
+package auth
+
+import (
+	"github.com/Zenk41/go-gin-htmx/views/components"
+	"github.com/Zenk41/go-gin-htmx/views/layouts"
+)
+
+templ Register(IsUser bool) {
+	@layouts.Base() {
+		<header>
+			@components.NavBar(IsUser)
+		</header>
+		<main class="my-2 space-y-2 p-2">
+			<form class="card h-auto m-auto space-y-4 p-4 bg-primary-content max-w-screen-sm">
+				<h1 class="m-auto py-2">Register Admin</h1>
+				<label class="input input-bordered flex items-center gap-2">
+					<i class="fa-regular fa-envelope"></i>
+					<input name="email" type="text" class="grow" placeholder="Email" hx-post="/validate/email" hx-target="#email-status" hx-swap="outerHTML" hx-trigger="keyup changed delay:1s"/>
+					<div id="email-status"></div>
+				</label>
+				<label class="input input-bordered flex items-center gap-2">
+					<i class="fa-solid fa-user-ninja"></i>
+					<input type="text" class="grow" placeholder="Name"/>
+					<div id="name-status"></div>
+				</label>
+				<label x-data="{ show: false }" class="input input-bordered flex items-center gap-2">
+					<i class="fa-solid fa-key"></i>
+					<input hx-trigger="keyup changed delay:1s" :type="show ? 'text' : 'password'" hx-post="/validate/password" type="password" class="grow" name="password" placeholder="Password" hx-target="#password-status" hx-swap="outerHTML"/>
+					<div id="password-status"></div>
+					<button type="button" @click="show = !show">
+						<span x-text="show ? '🙈' : '👁️'"></span>
+					</button>
+				</label>
+				<div class="flex justify-center m-auto space-x-4">
+					<button class="btn btn-sm btn-primary" hx-post="/dashboard/check">Register</button>
+					<a href="/dashboard/login" class="link link-secondary">Or Login</a>
+				</div>
+			</form>
+		</main>
+		@components.Footer()
+	}
+}

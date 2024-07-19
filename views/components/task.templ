@@ -1,0 +1,13 @@
+package components
+
+templ Task(title, desc string) {
+	<div class="card bg-base-100 w-96 shadow-xl">
+		<div class="card-body">
+			<h2 class="card-title">{ title }</h2>
+			<p>{ desc }</p>
+			<div class="card-actions justify-end">
+				<button class="btn btn-primary">DONE</button>
+			</div>
+		</div>
+	</div>
+}

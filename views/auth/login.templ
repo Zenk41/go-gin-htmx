@@ -1,0 +1,35 @@
+package auth
+
+import (
+	"github.com/Zenk41/go-gin-htmx/views/components"
+	"github.com/Zenk41/go-gin-htmx/views/layouts"
+)
+
+templ Login() {
+	@layouts.Base() {
+		<header>@components.NavBar(false)
+</header>
+		<main class="p-6">
+			<div class="card w-64 m-auto bg-blue-700 p-5 w-auto ">
+				<h3 class="m-auto p-2 font-bold">Login Form</h3>
+				<form hx-post="/login" hx-swap="outerHTML" class="space-y-4">
+					<label class="input input-bordered flex items-center gap-2">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4 opacity-70"><path d="M2.5 3A1.5 1.5 0 0 0 1 4.5v.793c.026.009.051.02.076.032L7.674 8.51c.206.1.446.1.652 0l6.598-3.185A.755.755 0 0 1 15 5.293V4.5A1.5 1.5 0 0 0 13.5 3h-11Z"></path><path d="M15 6.954 8.978 9.86a2.25 2.25 0 0 1-1.956 0L1 6.954V11.5A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5V6.954Z"></path></svg>
+						<input type="text" class="grow" placeholder="Email" name="email" hx-post="/validate/email" hx-indicator="#indEmail" hx-target="#email-status" hx-trigger="keyup changed delay:1s"/>
+						<span id="indEmail" class="htmx-indicator loading loading-spinner loading-sm"></span>
+						<div id="email-status"></div>
+					</label>
+					<label x-data="{ show: false }" class="input input-bordered flex items-center gap-2">
+						<i class="fa-solid fa-key"></i>
+						<input hx-trigger="keyup changed delay:1s" :type="show ? 'text' : 'password'" hx-post="/validate/password" type="password" class="grow" name="password" placeholder="Password" hx-target="#password-status" hx-swap="outerHTML"/>
+						<div id="password-status"></div>
+						<button type="button" @click="show = !show">
+							<span x-text="show ? '🙈' : '👁️'"></span>
+						</button>
+					</label>
+					<button class="btn btn-default">Submit</button>
+				</form>
+			</div>
+		</main>
+	}
+}
