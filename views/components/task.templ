@@ -1,5 +1,7 @@
 package components
 
+import "github.com/Zenk41/go-gin-htmx/models"
+
 templ Task(title, desc string) {
 	<div class="card bg-base-100 w-96 shadow-xl">
 		<div class="card-body">
@@ -9,7 +11,25 @@ templ Task(title, desc string) {
 				<div class="dropdown dropdown-end">
 					<button class="btn btn-circle" role="button"><i class="fa-solid fa-gear"></i></button>
 					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
-						<li><a>Edit</a></li>
+						<li>
+							<a class="btn btn-ghost text-m" onclick="my_modal_2.showModal()">Edit</a>
+							<dialog id="my_modal_2" class="modal">
+								<div class="modal-box">
+									<form method="dialog">
+										<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+										<div class="mb-4">
+											<label for="title" class="block text-sm font-medium text-gray-700">Title</label>
+											<input type="text" value=" " id="title" name="title" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+										</div>
+										<div class="mb-4">
+											<label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+											<textarea id="description" name="description" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+										</div>
+										<button class="btn btn-default" hx-post="/task">Submit</button>
+									</form>
+								</div>
+							</dialog>
+						</li>
 						<li><a>Delete</a></li>
 					</ul>
 				</div>
@@ -19,16 +39,53 @@ templ Task(title, desc string) {
 	</div>
 }
 
-templ NavTask() {
+templ Tasks(tasks []models.Task) {
+	<div id="task-list" class="space-x-2 space-y-2 flex flex-wrap h-3/6 place-content-center">
+		if len(tasks) == 0 {
+			<p>No tasks available.</p>
+		} else {
+			for _, task := range tasks {
+				@Task(task.Title, task.Description)
+			}
+		}
+	</div>
+}
+
+templ NavTask(date string) {
 	<div class="navbar bg-base-100">
 		<div class="navbar-start">
-			<a class="btn btn-ghost text-m">done all</a>
+			<a hx-post="" class="btn btn-ghost text-m">done all</a>
+			<input class="hidden" type="date" id="hidden-date-task" name="datetask"/>
 		</div>
 		<div class="navbar-center">
-			<input type="date" id="start" name="trip-start" value="2024-07-24" min="2018-01-01" max="2099-12-31" />
+			<input hx-indicator="#ind-task" hx-trigger="change" hx-post="/task/update" hx-target="#task-list" type="date" id="start" name="date-task" value={ date } min="2018-01-01" max="2099-12-31"/>
+			<span id="ind-task" class="htmx-indicator loading loading-spinner loading-sm"></span>
 		</div>
 		<div class="navbar-end">
-			<a class="btn btn-ghost text-m">new task</a>
+			<a class="btn btn-ghost text-m" onclick="copyDate();my_modal_1.showModal()">create task</a>
+			<dialog id="my_modal_1" class="modal">
+				<div class="modal-box">
+					<form method="dialog" id="task-form" hx-target="body" hx-post="/task">
+						<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+						<div class="mb-4">
+							<label for="title" class="block text-sm font-medium text-gray-700">Title</label>
+							<input type="text" value=" " id="title" name="title" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+						</div>
+						<div class="mb-4">
+							<label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+							<textarea id="description" name="description" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+						</div>
+						<input class="hidden" type="date" id="hidden-date-task" name="datetask"/>
+						<button class="btn btn-default" onclick="copyDate();my_modal_1.close()" hx-target="#task-list" hx-post="/task">Submit</button>
+					</form>
+				</div>
+			</dialog>
 		</div>
+		<script>
+    function copyDate() {
+        var dateValue = document.getElementById("start").value;
+        document.getElementById("hidden-date-task").value = dateValue;
+    }
+</script>
 	</div>
 }

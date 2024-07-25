@@ -6,23 +6,15 @@ import (
 	"github.com/Zenk41/go-gin-htmx/views/layouts"
 )
 
-templ Index(tasks []models.Task, user models.User, alert templ.Component) {
+templ Index(user models.User, alert templ.Component, date string, task templ.Component) {
 	@layouts.Base() {
 		@components.NavBar(user)
 		<main class="p-4">
 			<h1 class="text-2xl mb-4">Your Tasks</h1>
 			<div class="border-solid rounded-md">
-				@components.NavTask()
+				@components.NavTask(date)
 				<hr class="my-4"/>
-				<div class="space-x-2 space-y-2 flex flex-wrap h-3/6 place-content-center">
-					if len(tasks) == 0 {
-						<p>No tasks available.</p>
-					} else {
-						for _, task := range tasks {
-							@components.Task(task.Title, task.Description)
-						}
-					}
-				</div>
+				@task
 			</div>
 		</main>
 		if alert != nil {
