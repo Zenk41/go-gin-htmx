@@ -1,30 +1,32 @@
 package components
 
-templ NavBar(isLoggIn bool) {
+import "github.com/Zenk41/go-gin-htmx/models"
+
+templ NavBar(user models.User) {
 	<header>
 		<div class="navbar bg-base-100">
 			<div class="flex-1">
-				<a class="btn btn-ghost text-xl">Task Manager</a>
+				<a href="/" class="btn btn-ghost text-xl">Task Manager</a>
 			</div>
-			if !isLoggIn {
+			if user.UserID == "" {
 				<div class="navbar-end space-x-2">
-					<a class="btn">Login</a>
-					<a class="btn">Register</a>
+					<a class="btn" href="/login">Login</a>
+					<a class="btn" href="/register">Register</a>
 				</div>
 			} else {
-				<ul
-					tabindex="0"
-					class="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow"
-				>
-					<li>
-						<a class="justify-between">
-							Profile
-							<span class="badge">New</span>
-						</a>
-					</li>
-					<li><a>Settings</a></li>
-					<li><a>Logout</a></li>
-				</ul>
+				<div class="flex-none">
+					<ul class="menu menu-horizontal px-1">
+						<li>
+							<details>
+								<summary>{ user.Name }</summary>
+								<ul class="bg-base-100 rounded-t-none p-2">
+									<li><a>Settings</a></li>
+									<li><a hx-target="body" hx-post="/auth/logout">Log out</a></li>
+								</ul>
+							</details>
+						</li>
+					</ul>
+				</div>
 			}
 		</div>
 	</header>

@@ -1,16 +1,16 @@
 package auth
 
 import (
+	"github.com/Zenk41/go-gin-htmx/models"
 	"github.com/Zenk41/go-gin-htmx/views/components"
 	"github.com/Zenk41/go-gin-htmx/views/layouts"
 )
 
-templ Login() {
+templ Login(alert templ.Component) {
 	@layouts.Base() {
-		<header>@components.NavBar(false)
-</header>
+		@components.NavBar(models.User{})
 		<main class="p-6">
-			<div class="card w-64 m-auto bg-blue-700 p-5 w-auto ">
+			<div class="card w-64 m-auto bg-primary-content p-5 w-auto ">
 				<h3 class="m-auto p-2 font-bold">Login Form</h3>
 				<form hx-post="/login" hx-swap="outerHTML" class="space-y-4">
 					<label class="input input-bordered flex items-center gap-2">
@@ -27,9 +27,13 @@ templ Login() {
 							<span x-text="show ? '🙈' : '👁️'"></span>
 						</button>
 					</label>
-					<button class="btn btn-default">Submit</button>
+					<button class="btn btn-default" hx-target="body" hx-post="/auth/login">Login</button>
 				</form>
 			</div>
+			if alert != nil {
+				@alert
+			}
 		</main>
+		@components.Footer()
 	}
 }

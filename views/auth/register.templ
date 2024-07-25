@@ -1,15 +1,14 @@
 package auth
 
 import (
+	"github.com/Zenk41/go-gin-htmx/models"
 	"github.com/Zenk41/go-gin-htmx/views/components"
 	"github.com/Zenk41/go-gin-htmx/views/layouts"
 )
 
-templ Register(IsUser bool) {
+templ Register(alert templ.Component) {
 	@layouts.Base() {
-		<header>
-			@components.NavBar(IsUser)
-		</header>
+		@components.NavBar(models.User{})
 		<main class="my-2 space-y-2 p-2">
 			<form class="card h-auto m-auto space-y-4 p-4 bg-primary-content max-w-screen-sm">
 				<h1 class="m-auto py-2">Register Admin</h1>
@@ -20,7 +19,7 @@ templ Register(IsUser bool) {
 				</label>
 				<label class="input input-bordered flex items-center gap-2">
 					<i class="fa-solid fa-user-ninja"></i>
-					<input type="text" class="grow" placeholder="Name"/>
+					<input type="text" class="grow" placeholder="Name" name="name"/>
 					<div id="name-status"></div>
 				</label>
 				<label x-data="{ show: false }" class="input input-bordered flex items-center gap-2">
@@ -32,11 +31,14 @@ templ Register(IsUser bool) {
 					</button>
 				</label>
 				<div class="flex justify-center m-auto space-x-4">
-					<button class="btn btn-sm btn-primary" hx-post="/dashboard/check">Register</button>
-					<a href="/dashboard/login" class="link link-secondary">Or Login</a>
+					<button class="btn btn-sm btn-primary" hx-target="body" hx-post="/auth/register">Register</button>
+					<a href="/login" hx-target="body" class="link link-secondary">Or Login</a>
 				</div>
 			</form>
 		</main>
+		if alert != nil {
+			@alert
+		}
 		@components.Footer()
 	}
 }
