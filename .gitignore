@@ -9,3 +9,6 @@ packages/*/README.md
 bin
 *_templ.go
 tmp
+
+firebase/service_account/
+.vscode
