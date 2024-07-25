@@ -1,7 +1,7 @@
 package handlers
 
 import (
-
+	
 	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"

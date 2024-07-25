@@ -6,8 +6,29 @@ templ Task(title, desc string) {
 			<h2 class="card-title">{ title }</h2>
 			<p>{ desc }</p>
 			<div class="card-actions justify-end">
+				<div class="dropdown dropdown-end">
+					<button class="btn btn-circle" role="button"><i class="fa-solid fa-gear"></i></button>
+					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
+						<li><a>Edit</a></li>
+						<li><a>Delete</a></li>
+					</ul>
+				</div>
 				<button class="btn btn-primary">DONE</button>
 			</div>
+		</div>
+	</div>
+}
+
+templ NavTask() {
+	<div class="navbar bg-base-100">
+		<div class="navbar-start">
+			<a class="btn btn-ghost text-m">done all</a>
+		</div>
+		<div class="navbar-center">
+			<input type="date" id="start" name="trip-start" value="2024-07-24" min="2018-01-01" max="2099-12-31" />
+		</div>
+		<div class="navbar-end">
+			<a class="btn btn-ghost text-m">new task</a>
 		</div>
 	</div>
 }
