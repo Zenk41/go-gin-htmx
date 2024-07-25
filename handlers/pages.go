@@ -6,10 +6,12 @@ import (
 	"firebase.google.com/go/auth"
 	"github.com/Zenk41/go-gin-htmx/api"
 	"github.com/Zenk41/go-gin-htmx/models"
+	"github.com/Zenk41/go-gin-htmx/utils"
 	view_auth "github.com/Zenk41/go-gin-htmx/views/auth"
 	"github.com/Zenk41/go-gin-htmx/views/components"
 	"github.com/Zenk41/go-gin-htmx/views/home"
 	"github.com/gin-gonic/gin"
+	"time"
 )
 
 type PageHandler interface {
@@ -38,10 +40,11 @@ func NewPageHandler(userRepo models.UserRepository,
 }
 
 func (ph *pageHandler) Home(ctx *gin.Context) {
+	formattedDate := utils.GetTodayDate()
     firebaseCookie, err := ctx.Cookie("firebase_token")
     if err != nil || firebaseCookie == "" {
         // If there's no cookie, we still render the page with a logged-out state
-        Render(ctx, home.Index([]models.Task{}, models.User{}, components.Alert("warning", "login to see your task")))
+        Render(ctx, home.Index(models.User{}, components.Alert("warning", "login to see your task"),formattedDate, components.Tasks([]models.Task{})))
         return
     }
 
@@ -49,7 +52,7 @@ func (ph *pageHandler) Home(ctx *gin.Context) {
     token, err := ph.firebaseAuth.VerifyIDToken(ctx, firebaseCookie)
     if err != nil {
         // Render the page with a logged-out state if the token verification fails
-        Render(ctx, home.Index([]models.Task{}, models.User{}, components.Alert("error", err.Error())))
+        Render(ctx, home.Index( models.User{}, components.Alert("error", err.Error()),formattedDate,components.Tasks([]models.Task{})))
         return
     }
 
@@ -57,12 +60,20 @@ func (ph *pageHandler) Home(ctx *gin.Context) {
     user, err := ph.userRepo.GetUser(ctx, token.UID)
     if err != nil || user == nil {
         // Render the page with a logged-out state if user retrieval fails
-        Render(ctx, home.Index([]models.Task{}, models.User{}, components.Alert("error", err.Error())))
+        Render(ctx, home.Index( models.User{}, components.Alert("error", err.Error()),formattedDate,components.Tasks([]models.Task{})))
+        return
+    }
+	date, _ := time.Parse("2006-01-02", formattedDate)
+	//Get task from repo
+	tasks, err := ph.taskRepo.GetTasksByDate(ctx, user.UserID, date)
+	if err != nil || user == nil {
+        // Render the page with a logged-out state if user retrieval fails
+        Render(ctx, home.Index( models.User{}, components.Alert("error", err.Error()),formattedDate,components.Tasks([]models.Task{})))
         return
     }
 
     // Render the page with the logged-in state and the user data
-    Render(ctx, home.Index([]models.Task{}, *user, nil))
+    Render(ctx, home.Index(*user, nil,formattedDate,components.Tasks(*tasks)))
 }
 
 func (ph *pageHandler) Login(ctx *gin.Context) {

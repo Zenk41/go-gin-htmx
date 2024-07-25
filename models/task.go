@@ -36,10 +36,10 @@ type taskRepository struct {
 }
 
 type TaskRepository interface {
-	GetTasksByDate(ctx context.Context, userID string, date time.Time) ([]Task, error)
-	GetTodayTasks(ctx context.Context, userID string) ([]Task, error)
+	GetTasksByDate(ctx context.Context, userID string, date time.Time) (*[]Task, error)
+	GetTodayTasks(ctx context.Context, userID string) (*[]Task, error)
 	CreateTask(ctx context.Context, task TaskPayload) error
-	GetTaskById(ctx context.Context, taskID string) (Task, error)
+	GetTaskById(ctx context.Context, taskID string) (*Task, error)
 	DeleteTaskById(ctx context.Context, taskID string) error
 	DoneAllTaskDayByDate(ctx context.Context, userID string, date time.Time) error
 	EditTaskById(ctx context.Context, task TaskPayload) error
@@ -58,7 +58,7 @@ func (tr *taskRepository) CreateTask(ctx context.Context, task TaskPayload) erro
 }
 
 // GetTasksByDate retrieves tasks by specific date
-func (tr *taskRepository) GetTasksByDate(ctx context.Context, userID string, date time.Time) ([]Task, error) {
+func (tr *taskRepository) GetTasksByDate(ctx context.Context, userID string, date time.Time) (*[]Task, error) {
 	var tasks []Task
 	iter := tr.client.Collection("tasks").
 		Where("user_id", "==", userID).
@@ -79,26 +79,26 @@ func (tr *taskRepository) GetTasksByDate(ctx context.Context, userID string, dat
 		}
 		tasks = append(tasks, task)
 	}
-	return tasks, nil
+	return &tasks, nil
 }
 
 // GetTodayTasks retrieves tasks for the current date
-func (tr *taskRepository) GetTodayTasks(ctx context.Context, userID string) ([]Task, error) {
+func (tr *taskRepository) GetTodayTasks(ctx context.Context, userID string) (*[]Task, error) {
 	today := time.Now().Truncate(24 * time.Hour)
 	return tr.GetTasksByDate(ctx, userID, today)
 }
 
 // GetTaskById retrieves a task by its ID
-func (tr *taskRepository) GetTaskById(ctx context.Context, taskID string) (Task, error) {
+func (tr *taskRepository) GetTaskById(ctx context.Context, taskID string) (*Task, error) {
 	doc, err := tr.client.Collection("tasks").Doc(taskID).Get(ctx)
 	if err != nil {
-		return Task{}, err
+		return &Task{}, err
 	}
 	var task Task
 	if err := doc.DataTo(&task); err != nil {
-		return Task{}, err
+		return &Task{}, err
 	}
-	return task, nil
+	return &task, nil
 }
 
 // DeleteTaskById deletes a task by its ID

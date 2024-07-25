@@ -84,7 +84,7 @@ func main() {
 		log.Fatalf("Failed to create Firestore client: %v", err)
 	}
 	userHandler := handlers.NewUserHandler(userRepo, apiKey, firebaseApi, domain)
-	taskHandler := handlers.NewTaskHandler(taskRepo)
+	taskHandler := handlers.NewTaskHandler(taskRepo, firebaseAuth)
 	pageHandler := handlers.NewPageHandler(userRepo, taskRepo, firebaseApi, firebaseAuth)
 
 	routesInit := handlerList{
@@ -122,6 +122,11 @@ func (hl *handlerList) RoutesRegister(e *gin.Engine) {
 	e.GET("/register", hl.pageHandler.Register)
 	// home page
 	e.GET("/", hl.pageHandler.Home)
+
+	// task 
+	task := e.Group("/task")
+	task.POST("/", hl.taskHandler.CreateNewTask)
+	task.POST("/update", hl.taskHandler.GetTasksByDate)
 
 	// auth
 	auth := e.Group("/auth")
