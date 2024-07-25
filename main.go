@@ -1,18 +1,24 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"log"
 	"os"
 
+	"github.com/Zenk41/go-gin-htmx/api"
+	"github.com/Zenk41/go-gin-htmx/firebase"
 	"github.com/Zenk41/go-gin-htmx/handlers"
 	"github.com/Zenk41/go-gin-htmx/middlewares"
 	"github.com/Zenk41/go-gin-htmx/models"
-	"github.com/Zenk41/go-gin-htmx/views/home"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
+
+type FirebaseConfig struct {
+	ProjectID string `json:"project_id"`
+}
 
 func main() {
 	err := godotenv.Load(".env")
@@ -25,47 +31,106 @@ func main() {
 		log.Fatal("PORT environment variable not set")
 	}
 
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Fatal("apiKey environment variable not set")
+	}
+
+	domain := os.Getenv("DOMAIN")
+	if apiKey == "" {
+		log.Fatal("DOMAIN environment variable not set")
+	}
+
+	firebaseServiceAccount := os.Getenv("SERVICE_ACCOUNT_FILE")
+	if firebaseServiceAccount == "" {
+		log.Fatal("Firebase Project ID variable not set")
+	}
+
 	httpAddr := flag.String("addr", "0.0.0.0"+port, "Listen address")
 	flag.Parse()
 
 	gin.SetMode(gin.DebugMode) // Ensure gin is in debug mode
 	gin.DefaultWriter = os.Stdout
 
-	client, err := models.CreateClient(os.Getenv("FIREBASE_PROJECTID"), os.Getenv("FIREBASE_APIKEY"))
+	// Path to your JSON configuration file
+	filePath := firebaseServiceAccount
+
+	// Read the JSON file
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Fatalf("Failed to read file: %v", err)
+	}
+
+	// Unmarshal the JSON data into the struct
+	var config FirebaseConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		log.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	fireStoreClient, err := firebase.Firestore(firebaseServiceAccount, config.ProjectID)
 	if err != nil {
 		log.Fatalf("Failed to create Firestore client: %v", err)
 	}
-	defer client.Close()
+	defer fireStoreClient.Close()
 
-	route := Routes()
+	firebaseApi := api.NewFirebaseApi(apiKey)
 
-	route.SetTrustedProxies(nil)
+	userRepo := models.NewUserRepository(fireStoreClient)
+	taskRepo := models.NewTaskRepository(fireStoreClient)
 
-	if err := route.Run(*httpAddr); err != nil {
+
+	firebaseAuth, err := firebase.Auth(firebaseServiceAccount)
+	if err != nil {
+		log.Fatalf("Failed to create Firestore client: %v", err)
+	}
+	userHandler := handlers.NewUserHandler(userRepo, apiKey, firebaseApi, domain)
+	taskHandler := handlers.NewTaskHandler(taskRepo)
+	pageHandler := handlers.NewPageHandler(userRepo, taskRepo, firebaseApi, firebaseAuth)
+
+	routesInit := handlerList{
+		userHandler: userHandler,
+		taskHandler: taskHandler,
+		pageHandler: pageHandler,
+	}
+
+	e := gin.New()
+
+	routesInit.RoutesRegister(e)
+
+	e.SetTrustedProxies(nil)
+
+	if err := e.Run(*httpAddr); err != nil {
 		log.Fatalf("Failed to run server: %v", err)
 	}
 }
 
-func Routes() *gin.Engine {
-	router := gin.New()                        // Create a new gin router without default middleware
-	router.Use(gin.Recovery())                 // Add recovery middleware for panic recovery
-	router.Use(middlewares.StructuredLogger()) // Azpply logging middleware
+type handlerList struct {
+	userHandler handlers.UserHandler
+	taskHandler handlers.TaskHandler
+	pageHandler handlers.PageHandler
+}
 
-	router.Static("/public", "./public")
+func (hl *handlerList) RoutesRegister(e *gin.Engine) {
+	e.Use(gin.Recovery())                 // Add recovery middleware for panic recovery
+	e.Use(middlewares.StructuredLogger()) // Apply logging middleware
 
-	router.GET("/test", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"aku": "kamu",
-		})
-	})
+	e.Static("/public", "./public")
 
-	router.GET("/home", handlers.Make(func(ctx *gin.Context) error {
-		return handlers.Render(ctx, home.Index())
-	}))
+	// Pages
+	// auth page
+	e.GET("/login", hl.pageHandler.Login)
+	e.GET("/register", hl.pageHandler.Register)
+	// home page
+	e.GET("/", hl.pageHandler.Home)
 
-	router.GET("/homes", func(ctx *gin.Context) {
-		handlers.Render(ctx, home.Index())
-	})
+	// auth
+	auth := e.Group("/auth")
+	auth.POST("/register", hl.userHandler.Register)
+	auth.POST("/login", hl.userHandler.Login)
+	auth.POST("/logout", hl.userHandler.Logout)
 
-	return router
+	// validates
+	validates := e.Group("/validate")
+	validates.POST("/email", handlers.Make(handlers.ValidateEmailHandler))
+	validates.POST("/password", handlers.Make(handlers.ValidatePasswordHandler))
 }
