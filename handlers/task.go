@@ -14,46 +14,167 @@ import (
 
 type TaskHandler interface {
 	CreateNewTask(ctx *gin.Context)
-	GetTodayTask(ctx *gin.Context)
-	GetTaskById(ctx *gin.Context)
 	GetTasksByDate(ctx *gin.Context)
 	DeleteTaskById(ctx *gin.Context)
+	DoneTaskById(ctx *gin.Context)
 	DoneAllTaskDayByDate(ctx *gin.Context)
 	EditTaskById(ctx *gin.Context)
+	EditTaskModal(ctx *gin.Context)
+	DeleteTaskModal(ctx *gin.Context)
 }
 
 type taskHandler struct {
-	repo models.TaskRepository
+	taskRepo     models.TaskRepository
+	userRepo     models.UserRepository
 	firebaseAuth *auth.Client
 }
 
-func NewTaskHandler(repo models.TaskRepository, firebaseAuth *auth.Client) TaskHandler {
+func NewTaskHandler(taskRepo models.TaskRepository, userRepo models.UserRepository, firebaseAuth *auth.Client) TaskHandler {
 	return &taskHandler{
-		repo: repo,
+		taskRepo:     taskRepo,
+		userRepo:     userRepo,
 		firebaseAuth: firebaseAuth,
 	}
 }
 
 // CreateNewTask handles the creation of a new task
 func (th *taskHandler) CreateNewTask(ctx *gin.Context) {
-	
+	userId, errC := CookieAuth(ctx, th.firebaseAuth)
+	if errC != nil || userId == "" {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
+		return
+	}
 	var task models.TaskPayload
 
 	task.Title = ctx.PostForm("title")
 	task.Description = ctx.PostForm("description")
-	dateStr := ctx.PostForm("datetask")
+	dateStr := ctx.PostForm("date-task")
+	if dateStr == "" {
+		ctx.Redirect(http.StatusFound, "/")
+		return
+	}
 
-	date, _ := time.Parse("2006-01-02", dateStr)
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		ctx.Redirect(http.StatusFound, "/")
+		return
+	}
 	task.Date = date
 
 	task.TaskID = "task" + time.Now().Format("20060102150405")
 	task.CreatedAt = time.Now()
 	task.UpdatedAt = time.Now()
 
+	task.UserID = userId
+
+	if err := th.taskRepo.CreateTask(context.Background(), task); err != nil {
+		Render(ctx, home.Index(models.User{}, components.Alert("error", err.Error()), dateStr, components.Tasks([]models.Task{}, nil)))
+		return
+	}
+
+	user, err := th.userRepo.GetUser(context.Background(), userId)
+	if err != nil {
+		Render(ctx, home.Index(models.User{}, components.Alert("error", err.Error()), dateStr, components.Tasks([]models.Task{}, nil)))
+		return
+	}
+
+	tasks, err := th.taskRepo.GetTasksByDate(ctx, userId, date)
+	if err != nil {
+		Render(ctx, home.Index(models.User{}, components.Alert("error", err.Error()), dateStr, components.Tasks([]models.Task{}, nil)))
+		return
+	}
+
+	Render(ctx, home.Index(*user, components.Alert("success", "new task has been created"), dateStr, components.Tasks(*tasks, nil)))
+}
+
+// DeleteTaskById handles deleting a task by its ID
+func (th *taskHandler) DeleteTaskById(ctx *gin.Context) {
+	userId, errC := CookieAuth(ctx, th.firebaseAuth)
+	if errC != nil || userId == "" {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
+		return
+	}
+	taskID := ctx.Param("id")
+	task, err := th.taskRepo.GetTaskById(ctx, taskID)
+	if err != nil {
+		ctx.Redirect(http.StatusFound, "/")
+		return
+	}
+
+	if userId != task.UserID {
+		Render(ctx, components.Task(*task, components.Alert("error", "error : You are not the owner of this task")))
+		return
+	}
+
+	if err := th.taskRepo.DeleteTaskById(context.Background(), taskID); err != nil {
+		th.GetTasksByDate(ctx)
+		return
+	}
+
+	tasks, err := th.taskRepo.GetTasksByDate(ctx, userId, task.Date)
+	if err != nil {
+		Render(ctx, components.Tasks([]models.Task{}, components.Alert("error", "error : Failed to get tasks")))
+		return
+	}
+	Render(ctx, components.Tasks(*tasks, components.Alert("success", "Task deleted successfully")))
+}
+
+func (th *taskHandler) DoneTaskById(ctx *gin.Context) {
+	userId, errC := CookieAuth(ctx, th.firebaseAuth)
+	if errC != nil || userId == "" {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
+		return
+	}
+
+	task, err := th.taskRepo.GetTaskById(ctx, ctx.Param("id"))
+	if err != nil {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
+		return
+	}
+
+	if userId != task.UserID {
+		th.GetTasksByDate(ctx)
+		return
+	}
+
+	err = th.taskRepo.DoneTaskById(ctx, userId, task.TaskID)
+	if err != nil {
+		th.GetTasksByDate(ctx)
+		return
+	}
+	date, err := time.Parse("2006-01-02",ctx.Query("date"))
+	if err != nil {
+		th.GetTasksByDate(ctx)
+		ctx.JSON(http.StatusBadRequest,err.Error())
+		return
+	}
+
+	tasks, err := th.taskRepo.GetTasksByDate(ctx, userId, date)
+	if err != nil {
+		th.GetTasksByDate(ctx)
+		return
+	}
+	Render(ctx, components.Tasks(*tasks, components.Alert("success", "task by date")))
+}
+
+// DoneAllTaskDayByDate marks all tasks for a specific day as done
+func (th *taskHandler) DoneAllTaskDayByDate(ctx *gin.Context) {
+	userId, errC := CookieAuth(ctx, th.firebaseAuth)
+	if errC != nil || userId == "" {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
+		return
+	}
+	dateStr := ctx.PostForm("date-task")
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		th.GetTasksByDate(ctx)
+		return
+	}
+
 	firebaseCookie, err := ctx.Cookie("firebase_token")
 	if err != nil || firebaseCookie == "" {
 		// If there's no cookie, we still render the page with a logged-out state
-		Render(ctx, home.Index( models.User{}, components.Alert("warning", "login to see your task"), dateStr,components.Tasks([]models.Task{})))
+		Render(ctx, components.Tasks([]models.Task{}, components.Alert("error", "error: "+err.Error())))
 		return
 	}
 
@@ -61,111 +182,123 @@ func (th *taskHandler) CreateNewTask(ctx *gin.Context) {
 	token, err := th.firebaseAuth.VerifyIDToken(ctx, firebaseCookie)
 	if err != nil {
 		// Render the page with a logged-out state if the token verification fails
-		Render(ctx, home.Index(models.User{}, components.Alert("error", err.Error()), dateStr, components.Tasks([]models.Task{})))
-		return
-	}
-	task.UserID = token.UID
-
-	if err := th.repo.CreateTask(context.Background(), task); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
+		Render(ctx, components.Tasks([]models.Task{}, components.Alert("error", "error: "+err.Error())))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Task created successfully"+task.Date.String() + dateStr})
-}
+	if err := th.taskRepo.DoneAllTaskDayByDate(context.Background(), token.UID, date); err != nil {
+		Render(ctx, components.Tasks([]models.Task{}, components.Alert("error", "error: Failed to mark tasks as done")))
+		return
+	}
 
-// GetTodayTask handles retrieving today's tasks for a specific user
-func (th *taskHandler) GetTodayTask(ctx *gin.Context) {
-	userID := ctx.Param("userID")
-	tasks, err := th.repo.GetTodayTasks(context.Background(), userID)
+	tasks, err := th.taskRepo.GetTasksByDate(ctx, token.UID, date)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
-		return
-	}
-	ctx.JSON(http.StatusOK, gin.H{"tasks": tasks})
-}
-
-// GetTaskById handles retrieving a task by its ID
-func (th *taskHandler) GetTaskById(ctx *gin.Context) {
-	
-	taskID := ctx.Param("taskID")
-	task, err := th.repo.GetTaskById(context.Background(), taskID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve task"})
-		return
-	}
-	ctx.JSON(http.StatusOK, gin.H{"task": task})
-}
-
-// DeleteTaskById handles deleting a task by its ID
-func (th *taskHandler) DeleteTaskById(ctx *gin.Context) {
-	taskID := ctx.Param("taskID")
-	if err := th.repo.DeleteTaskById(context.Background(), taskID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
-		return
-	}
-	ctx.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
-}
-
-// DoneAllTaskDayByDate marks all tasks for a specific day as done
-func (th *taskHandler) DoneAllTaskDayByDate(ctx *gin.Context) {
-	userID := ctx.Param("userID")
-	dateStr := ctx.Param("date")
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format"})
+		Render(ctx, components.Tasks([]models.Task{}, components.Alert("error", "error : Failed to get tasks")))
 		return
 	}
 
-	if err := th.repo.DoneAllTaskDayByDate(context.Background(), userID, date); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark tasks as done"})
-		return
-	}
-	ctx.JSON(http.StatusOK, gin.H{"message": "All tasks for the day marked as done"})
+	Render(ctx, components.Tasks(*tasks, components.Alert("success", "success done all task")))
 }
 
 // EditTaskById handles editing a task by its ID
 func (th *taskHandler) EditTaskById(ctx *gin.Context) {
-	var task models.TaskPayload
-	if err := ctx.ShouldBindJSON(&task); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	userId, errC := CookieAuth(ctx, th.firebaseAuth)
+	if errC != nil || userId == "" {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
 		return
 	}
 
-	taskID := ctx.Param("taskID")
-	task.TaskID = taskID
-	task.UpdatedAt = time.Now()
-
-	if err := th.repo.EditTaskById(context.Background(), task); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to edit task"})
+	task, err := th.taskRepo.GetTaskById(ctx, ctx.Query("id-task"))
+	if err != nil {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Task edited successfully"})
+	if userId != task.UserID {
+		Render(ctx, components.Task(*task, components.Alert("error", "error : You are not the owner of this task")))
+		return
+	}
+
+	taskPayload := models.TaskPayload{
+		TaskID:      task.TaskID,
+		UserID:      task.UserID,
+		Title:       task.Title,
+		Description: task.Description,
+		Status:      task.Status,
+		Date:        task.Date,
+		CreatedAt:   task.CreatedAt,
+		UpdatedAt:   task.UpdatedAt,
+	}
+	taskPayload.Title = ctx.PostForm("title")
+	taskPayload.Description = ctx.PostForm("description")
+	taskPayload.UpdatedAt = time.Now()
+
+	if err := th.taskRepo.EditTaskById(ctx, taskPayload); err != nil {
+		Render(ctx, components.Task(*task, components.Alert("error", "error : "+err.Error())))
+		return
+	}
+	Render(ctx, components.Task(*task, components.Alert("success", "success : Task edited successfully")))
 }
-
 
 func (th *taskHandler) GetTasksByDate(ctx *gin.Context) {
 	dateStr := ctx.PostForm("date-task")
 	date, _ := time.Parse("2006-01-02", dateStr)
-    firebaseCookie, err := ctx.Cookie("firebase_token")
-    if err != nil || firebaseCookie == "" {
-        // If there's no cookie, we still render the page with a logged-out state
-        Render(ctx, components.Tasks([]models.Task{}))
-        return
-    }
-
-    // Verify the ID token
-    token, err := th.firebaseAuth.VerifyIDToken(ctx, firebaseCookie)
-    if err != nil {
-        // Render the page with a logged-out state if the token verification fails
-        Render(ctx, components.Tasks([]models.Task{}))
-        return
-    }
-	tasks,err := th.repo.GetTasksByDate(ctx, token.UID, date)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get tasks"})
+	userId, errC := CookieAuth(ctx, th.firebaseAuth)
+	if errC != nil || userId == "" {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
 		return
 	}
-	Render(ctx, components.Tasks(*tasks))
+	
+	tasks, err := th.taskRepo.GetTasksByDate(ctx, userId, date)
+	if err != nil {
+		Render(ctx, components.Tasks([]models.Task{}, components.Alert("error", "error : Failed to get tasks")))
+		return
+	}
+	Render(ctx, components.Tasks(*tasks, components.Alert("success", "task by date")))
+}
+
+func (th *taskHandler) EditTaskModal(ctx *gin.Context) {
+	userId, errC := CookieAuth(ctx, th.firebaseAuth)
+	if errC != nil || userId == "" {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
+		return
+	}
+	
+	idTask := ctx.Query("id-task")
+	if idTask == "" {
+		Render(ctx, components.ModalTaskError("error: id task not found"))
+		return
+	}
+
+	task, err := th.taskRepo.GetTaskById(ctx, idTask)
+	if err != nil {
+		Render(ctx, components.ModalTaskError("error: "+err.Error()))
+		return
+	}
+
+	Render(ctx, components.ModalEdit(*task))
+}
+
+func (th *taskHandler) DeleteTaskModal(ctx *gin.Context) {
+	userId, errC := CookieAuth(ctx, th.firebaseAuth)
+	if errC != nil || userId == "" {
+		ctx.Redirect(http.StatusUnauthorized, "/login")
+		return
+	}
+
+	
+	idTask := ctx.Query("id-task")
+	if idTask == "" {
+		Render(ctx, components.ModalTaskError("error: id task not found"))
+		return
+	}
+
+	task, err := th.taskRepo.GetTaskById(ctx, idTask)
+	if err != nil {
+		Render(ctx, components.ModalTaskError("error: "+err.Error()))
+		return
+	}
+
+	Render(ctx, components.ModalDelete(*task))
+	
 }
