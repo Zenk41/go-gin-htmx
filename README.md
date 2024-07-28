@@ -1,16 +1,20 @@
 # Simple To-Do List Application
 
+This project is created to learn and explore various web development technologies including HTMX, Gin, Temple, Firebase Authentication, and Firestore. The aim is to build a web application that showcases these technologies in action.
+
+## Project Overview
+
 A simple web application to manage to-do tasks, built with Golang, Gin framework, htmx for real-time interactions, and Firebase for authentication and data storage.
 
 ## Features
 
 - User Authentication (Sign Up and Login)
 - Task Management (Create, Read, Update, Delete tasks)
-- Real-Time Updates with htmx
+- Updates with htmx
 
 ## Technology Stack
 
-- **Frontend:** HTML, htmx, templ
+- **Frontend:** HTML, htmx, templ, tailwindCSS, DaisyUI
 - **Backend:** Golang, Gin
 - **Database:** Firebase Firestore
 - **Authentication:** Firebase Authentication
