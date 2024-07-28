@@ -2,90 +2,127 @@ package components
 
 import "github.com/Zenk41/go-gin-htmx/models"
 
-templ Task(title, desc string) {
-	<div class="card bg-base-100 w-96 shadow-xl">
+templ Task(task models.Task, alert templ.Component) {
+	<div class="card bg-base-100 w-96 shadow-xl" id={ task.TaskID }>
 		<div class="card-body">
-			<h2 class="card-title">{ title }</h2>
-			<p>{ desc }</p>
+			<h2 class="card-title">{ task.Title }</h2>
+			<p>{ task.Description }</p>
+			if task.Status != "" {
+				<div class="badge badge-accent badge-outline">{ task.Status }</div>
+			}
 			<div class="card-actions justify-end">
 				<div class="dropdown dropdown-end">
 					<button class="btn btn-circle" role="button"><i class="fa-solid fa-gear"></i></button>
-					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
-						<li>
-							<a class="btn btn-ghost text-m" onclick="my_modal_2.showModal()">Edit</a>
-							<dialog id="my_modal_2" class="modal">
-								<div class="modal-box">
-									<form method="dialog">
-										<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-										<div class="mb-4">
-											<label for="title" class="block text-sm font-medium text-gray-700">Title</label>
-											<input type="text" value=" " id="title" name="title" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
-										</div>
-										<div class="mb-4">
-											<label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-											<textarea id="description" name="description" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
-										</div>
-										<button class="btn btn-default" hx-post="/task">Submit</button>
-									</form>
-								</div>
-							</dialog>
-						</li>
-						<li><a>Delete</a></li>
+					<ul tabindex="0" class="space-y-2 dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
+						<li><a class="btn" hx-post={ "/component/task-edit?id-task=" + task.TaskID } hx-target="#my_modal_2" hx-swap="InnerHtml" onclick="my_modal_2.showModal()">Edit</a></li>
+						<li><a class="btn" hx-post={ "/component/task-delete?id-task=" + task.TaskID } onclick="copyDate2();confirm_delete_modal.showModal()" hx-swap="InnerHtml" hx-target="#confirm_delete_modal">Delete</a></li>
 					</ul>
 				</div>
-				<button class="btn btn-primary">DONE</button>
+				<button class="btn btn-primary" hx-put={ "/task/" + task.TaskID + "/done?date=" + task.Date.Format("2006-01-02") } hx-target="#task-list">DONE</button>
 			</div>
 		</div>
 	</div>
+	if alert != nil {
+		@alert
+	}
 }
 
-templ Tasks(tasks []models.Task) {
+templ Tasks(tasks []models.Task, alert templ.Component) {
 	<div id="task-list" class="space-x-2 space-y-2 flex flex-wrap h-3/6 place-content-center">
 		if len(tasks) == 0 {
 			<p>No tasks available.</p>
 		} else {
 			for _, task := range tasks {
-				@Task(task.Title, task.Description)
+				@Task(task, nil)
 			}
 		}
 	</div>
+	if alert != nil {
+		@alert
+	}
 }
 
 templ NavTask(date string) {
 	<div class="navbar bg-base-100">
 		<div class="navbar-start">
-			<a hx-post="" class="btn btn-ghost text-m">done all</a>
-			<input class="hidden" type="date" id="hidden-date-task" name="datetask"/>
+			<form>
+				<a hx-put="/task/done-all" onclick="copyDate1()" hx-indicator="#ind-task"  hx-target="#task-list" class="btn btn-ghost text-m">done all</a>
+				<input class="hidden" type="date" id="hidden-date-task-1" name="date-task"/>
+			</form>
 		</div>
 		<div class="navbar-center">
 			<input hx-indicator="#ind-task" hx-trigger="change" hx-post="/task/update" hx-target="#task-list" type="date" id="start" name="date-task" value={ date } min="2018-01-01" max="2099-12-31"/>
 			<span id="ind-task" class="htmx-indicator loading loading-spinner loading-sm"></span>
 		</div>
 		<div class="navbar-end">
-			<a class="btn btn-ghost text-m" onclick="copyDate();my_modal_1.showModal()">create task</a>
+			<a class="btn btn-ghost text-m" onclick="copyDate2();my_modal_1.showModal()">create task</a>
 			<dialog id="my_modal_1" class="modal">
 				<div class="modal-box">
-					<form method="dialog" id="task-form" hx-target="body" hx-post="/task">
+					<form method="dialog" id="task-form">
 						<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
 						<div class="mb-4">
 							<label for="title" class="block text-sm font-medium text-gray-700">Title</label>
-							<input type="text" value=" " id="title" name="title" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+							<input type="text" value=" " id="title" name="title" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required/>
 						</div>
 						<div class="mb-4">
 							<label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-							<textarea id="description" name="description" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+							<textarea id="description" name="description" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required></textarea>
 						</div>
-						<input class="hidden" type="date" id="hidden-date-task" name="datetask"/>
-						<button class="btn btn-default" onclick="copyDate();my_modal_1.close()" hx-target="#task-list" hx-post="/task">Submit</button>
+						<input class="hidden" type="date" id="hidden-date-task-2" name="date-task"/>
+						<button class="btn btn-default" onclick="copyDate2();my_modal_1.close()" hx-target="body" hx-post="/task">Submit</button>
 					</form>
 				</div>
 			</dialog>
 		</div>
 		<script>
-    function copyDate() {
-        var dateValue = document.getElementById("start").value;
-        document.getElementById("hidden-date-task").value = dateValue;
-    }
-</script>
+		function copyDate1() {
+			var dateValue = document.getElementById("start").value;
+			document.getElementById("hidden-date-task-1").value = dateValue;
+		}
+			function copyDate2() {
+			var dateValue = document.getElementById("start").value;
+			document.getElementById("hidden-date-task-2").value = dateValue;
+		}
+		</script>
+		<dialog id="my_modal_2" class="modal"></dialog>
+		<dialog id="confirm_delete_modal" class="modal"></dialog>
+	</div>
+}
+
+templ ModalEdit(task models.Task) {
+	<div class="modal-box">
+		<form method="dialog">
+			<input class="hidden" type="text" value="" id="id-task" name="id-task"/>
+			<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+			<div class="mb-4">
+				<label for="title" class="block text-sm font-medium text-gray-700">Title</label>
+				<input type="text" value={ task.Title } id="title" name="title" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+			</div>
+			<div class="mb-4">
+				<label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+				<textarea id="description" value="" name="description" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">{ task.Description }</textarea>
+			</div>
+			<input class="hidden" type="date" id="hidden-date-task-2" name="date-task"/>
+			<button hx-target={ "#" + task.TaskID } onclick="my_modal_2.close()" hx-swap="outerHTML" class="btn btn-default" hx-put={ "/task?id-task=" + task.TaskID }>Submit</button>
+		</form>
+	</div>
+}
+
+templ ModalDelete(task models.Task) {
+	<div class="modal-box">
+		<form method="dialog">
+			<p>are you sure want to delete the task with id : { task.TaskID }</p>
+			<button class="btn btn btn-default right-2">Batalkan</button>
+			<button hx-target="#task-list" class="btn btn-default right-2" hx-delete={ "/task/" + task.TaskID } onclick="confirm_delete_modal.close()">Submit</button>
+		</form>
+	</div>
+}
+
+templ ModalTaskError(msg string) {
+	<div class="modal-box">
+		<form method="dialog">
+			<p>{ msg }</p>
+			<button class="btn btn btn-default right-2">OK</button>
+		</form>
 	</div>
 }
