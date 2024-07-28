@@ -5,7 +5,7 @@ import ()
 templ Alert(alertType, message string) {
 	switch alertType {
 		case "error" :
-			<aside remove-me="20s" class="fixed z-50 flex items-center justify-center px-5 py-3 text-white bg-error rounded-lg bottom-4 right-4">
+			<aside remove-me="5s" class="fixed z-50 flex items-center justify-center px-5 py-3 text-white bg-error rounded-lg bottom-4 right-4">
 				<a href="#" class="text-xl font-medium hover:opacity-75">
 					{ message }
 				</a>
@@ -14,7 +14,7 @@ templ Alert(alertType, message string) {
 				</button>
 			</aside>
 		case "success" :
-			<aside remove-me="20s" class="fixed z-50 flex items-center justify-center px-5 py-3 text-white bg-success rounded-lg bottom-4 right-4">
+			<aside remove-me="5s" class="fixed z-50 flex items-center justify-center px-5 py-3 text-white bg-success rounded-lg bottom-4 right-4">
 				<a href="#" class="text-xl font-medium hover:opacity-75">
 					{ message }
 				</a>
@@ -23,7 +23,7 @@ templ Alert(alertType, message string) {
 				</button>
 			</aside>
 		default :
-			<aside remove-me="20s" class="fixed z-50 flex items-center justify-center px-5 py-3 text-white bg-warning rounded-lg bottom-4 right-4">
+			<aside remove-me="5s" class="fixed z-50 flex items-center justify-center px-5 py-3 text-white bg-warning rounded-lg bottom-4 right-4">
 				<a href="#" class="text-xl font-medium hover:opacity-75">
 					{ message }
 				</a>
