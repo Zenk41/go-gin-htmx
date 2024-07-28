@@ -1,7 +1,9 @@
 package handlers
 
 import (
-	
+	"errors"
+
+	"firebase.google.com/go/auth"
 	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -22,4 +24,25 @@ func Make(h HTTPHandler) gin.HandlerFunc {
 // Render renders a templ.Component using the gin.Context
 func Render(c *gin.Context, t templ.Component) error {
 	return t.Render(c.Request.Context(), c.Writer)
+}
+
+// CookieAuth retrieves the UID from the cookie and verifies it with Firebase Auth
+func CookieAuth(ctx *gin.Context, auth *auth.Client) (string, error) {
+
+	firebaseCookie, err := ctx.Cookie("firebase_token")
+	if err != nil || firebaseCookie == "" {
+		if err != nil {
+			return "", errors.New("login to see your task: " + err.Error())
+		}
+
+		return "", errors.New("login to see your task: cookie is empty")
+	}
+
+	token, err := auth.VerifyIDToken(ctx, firebaseCookie)
+	if err != nil {
+
+		return "", errors.New("token verification failed: " + err.Error())
+	}
+
+	return token.UID, nil
 }
