@@ -78,13 +78,12 @@ func main() {
 	userRepo := models.NewUserRepository(fireStoreClient)
 	taskRepo := models.NewTaskRepository(fireStoreClient)
 
-
 	firebaseAuth, err := firebase.Auth(firebaseServiceAccount)
 	if err != nil {
 		log.Fatalf("Failed to create Firestore client: %v", err)
 	}
 	userHandler := handlers.NewUserHandler(userRepo, apiKey, firebaseApi, domain)
-	taskHandler := handlers.NewTaskHandler(taskRepo, firebaseAuth)
+	taskHandler := handlers.NewTaskHandler(taskRepo, userRepo, firebaseAuth)
 	pageHandler := handlers.NewPageHandler(userRepo, taskRepo, firebaseApi, firebaseAuth)
 
 	routesInit := handlerList{
@@ -123,10 +122,19 @@ func (hl *handlerList) RoutesRegister(e *gin.Engine) {
 	// home page
 	e.GET("/", hl.pageHandler.Home)
 
-	// task 
+	// task
 	task := e.Group("/task")
-	task.POST("/", hl.taskHandler.CreateNewTask)
+	task.POST("", hl.taskHandler.CreateNewTask)
+	task.PUT("", hl.taskHandler.EditTaskById)
+	task.PUT("/:id/done", hl.taskHandler.DoneTaskById)
+	task.DELETE("/:id", hl.taskHandler.DeleteTaskById)
 	task.POST("/update", hl.taskHandler.GetTasksByDate)
+	task.PUT("/done-all", hl.taskHandler.DoneAllTaskDayByDate)
+
+	// component
+	comp := e.Group("/component")
+	comp.POST("/task-edit", hl.taskHandler.EditTaskModal)
+	comp.POST("/task-delete", hl.taskHandler.DeleteTaskModal)
 
 	// auth
 	auth := e.Group("/auth")
