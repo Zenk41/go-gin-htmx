@@ -4,7 +4,7 @@ This project is created to learn and explore various web development technologie
 
 ## Project Overview
 
-A simple web application to manage to-do tasks, built with Golang, Gin framework, htmx for real-time interactions, and Firebase for authentication and data storage.
+A simple web application to manage to-do tasks, built with Golang, Gin framework, htmx for interactions, and Firebase for authentication and data storage.
 
 ## Features
 
