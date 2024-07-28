@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -42,6 +43,7 @@ type TaskRepository interface {
 	GetTaskById(ctx context.Context, taskID string) (*Task, error)
 	DeleteTaskById(ctx context.Context, taskID string) error
 	DoneAllTaskDayByDate(ctx context.Context, userID string, date time.Time) error
+	DoneTaskById(ctx context.Context, userID string, taskID string) error
 	EditTaskById(ctx context.Context, task TaskPayload) error
 }
 
@@ -82,6 +84,28 @@ func (tr *taskRepository) GetTasksByDate(ctx context.Context, userID string, dat
 	return &tasks, nil
 }
 
+func (tr *taskRepository) DoneTaskById(ctx context.Context, userID string, taskID string) error {
+	doc := tr.client.Collection("tasks").Doc(taskID)
+
+	// Get the task to verify the userID
+	taskSnap, err := doc.Get(ctx)
+	if err != nil {
+		return err
+	}
+
+	taskData := taskSnap.Data()
+	if taskData["user_id"] != userID {
+		return fmt.Errorf("task does not belong to the user")
+	}
+
+	// Update the status to done
+	_, err = doc.Update(ctx, []firestore.Update{
+		{Path: "status", Value: "done"},
+	})
+
+	return err
+}
+
 // GetTodayTasks retrieves tasks for the current date
 func (tr *taskRepository) GetTodayTasks(ctx context.Context, userID string) (*[]Task, error) {
 	today := time.Now().Truncate(24 * time.Hour)
@@ -107,14 +131,15 @@ func (tr *taskRepository) DeleteTaskById(ctx context.Context, taskID string) err
 	return err
 }
 
-// DoneAllTaskDayByDate marks all tasks for a specific day as done
+// DoneAllTaskDayByDate marks all tasks for a specific user on a specific date as done
 func (tr *taskRepository) DoneAllTaskDayByDate(ctx context.Context, userID string, date time.Time) error {
 	iter := tr.client.Collection("tasks").
 		Where("user_id", "==", userID).
 		Where("date", "==", date).
 		Documents(ctx)
 
-	batch := tr.client.Batch()
+	batch := tr.client.BulkWriter(ctx)
+
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -123,17 +148,30 @@ func (tr *taskRepository) DoneAllTaskDayByDate(ctx context.Context, userID strin
 		if err != nil {
 			return err
 		}
+
 		batch.Update(doc.Ref, []firestore.Update{
 			{Path: "status", Value: "done"},
 		})
 	}
 
-	_, err := batch.Commit(ctx)
-	return err
+	batch.Flush() // Blocking call to ensure all writes are committed
+	return nil
 }
 
 // EditTaskById edits a task by its ID
 func (tr *taskRepository) EditTaskById(ctx context.Context, task TaskPayload) error {
-	_, err := tr.client.Collection("tasks").Doc(task.TaskID).Set(ctx, task, firestore.MergeAll)
+
+	taskMap := map[string]interface{}{
+		"task_id":     task.TaskID,
+		"user_id":     task.UserID,
+		"title":       task.Title,
+		"description": task.Description,
+		"status":      task.Status,
+		"date":        task.Date,
+		"created_at":  task.CreatedAt,
+		"updated_at":  task.UpdatedAt,
+	}
+
+	_, err := tr.client.Collection("tasks").Doc(task.TaskID).Set(ctx, taskMap, firestore.MergeAll)
 	return err
 }
