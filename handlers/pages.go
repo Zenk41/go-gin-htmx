@@ -3,6 +3,8 @@ package handlers
 import (
 	"net/http"
 
+	"time"
+
 	"firebase.google.com/go/auth"
 	"github.com/Zenk41/go-gin-htmx/api"
 	"github.com/Zenk41/go-gin-htmx/models"
@@ -11,7 +13,6 @@ import (
 	"github.com/Zenk41/go-gin-htmx/views/components"
 	"github.com/Zenk41/go-gin-htmx/views/home"
 	"github.com/gin-gonic/gin"
-	"time"
 )
 
 type PageHandler interface {
@@ -21,9 +22,9 @@ type PageHandler interface {
 }
 
 type pageHandler struct {
-	userRepo    models.UserRepository
-	taskRepo    models.TaskRepository
-	firebaseApi api.FirebaseApi
+	userRepo     models.UserRepository
+	taskRepo     models.TaskRepository
+	firebaseApi  api.FirebaseApi
 	firebaseAuth *auth.Client
 }
 
@@ -32,61 +33,58 @@ func NewPageHandler(userRepo models.UserRepository,
 	firebaseApi api.FirebaseApi,
 	firebaseAuth *auth.Client) PageHandler {
 	return &pageHandler{
-		userRepo:    userRepo,
-		taskRepo:    taskRepo,
-		firebaseApi: firebaseApi,
+		userRepo:     userRepo,
+		taskRepo:     taskRepo,
+		firebaseApi:  firebaseApi,
 		firebaseAuth: firebaseAuth,
 	}
 }
 
 func (ph *pageHandler) Home(ctx *gin.Context) {
 	formattedDate := utils.GetTodayDate()
-    firebaseCookie, err := ctx.Cookie("firebase_token")
-    if err != nil || firebaseCookie == "" {
-        // If there's no cookie, we still render the page with a logged-out state
-        Render(ctx, home.Index(models.User{}, components.Alert("warning", "login to see your task"),formattedDate, components.Tasks([]models.Task{})))
-        return
-    }
 
-    // Verify the ID token
-    token, err := ph.firebaseAuth.VerifyIDToken(ctx, firebaseCookie)
+	userId, err := CookieAuth(ctx, ph.firebaseAuth)
     if err != nil {
-        // Render the page with a logged-out state if the token verification fails
-        Render(ctx, home.Index( models.User{}, components.Alert("error", err.Error()),formattedDate,components.Tasks([]models.Task{})))
+        Render(ctx, home.Index(models.User{}, components.Alert("warning", err.Error()), formattedDate, components.Tasks([]models.Task{}, nil)))
         return
     }
 
-    // Get user from the repository
-    user, err := ph.userRepo.GetUser(ctx, token.UID)
-    if err != nil || user == nil {
-        // Render the page with a logged-out state if user retrieval fails
-        Render(ctx, home.Index( models.User{}, components.Alert("error", err.Error()),formattedDate,components.Tasks([]models.Task{})))
-        return
-    }
-	date, _ := time.Parse("2006-01-02", formattedDate)
+	user, err := ph.userRepo.GetUser(ctx, userId)
+	if err != nil {
+		Render(ctx, home.Index(models.User{}, components.Alert("error", "Failed to get user"), formattedDate, components.Tasks([]models.Task{}, nil)))
+		return
+	}
+	date, err := time.Parse("2006-01-02", formattedDate)
+	if err != nil {
+		// Render the page with a logged-out state if user retrieval fails
+		Render(ctx, home.Index(models.User{}, components.Alert("error", err.Error()), formattedDate, components.Tasks([]models.Task{}, nil)))
+		return
+	}
 	//Get task from repo
 	tasks, err := ph.taskRepo.GetTasksByDate(ctx, user.UserID, date)
-	if err != nil || user == nil {
-        // Render the page with a logged-out state if user retrieval fails
-        Render(ctx, home.Index( models.User{}, components.Alert("error", err.Error()),formattedDate,components.Tasks([]models.Task{})))
-        return
-    }
+	if err != nil {
+		// Render the page with a logged-out state if user retrieval fails
+		Render(ctx, home.Index(models.User{}, components.Alert("error", err.Error()), formattedDate, components.Tasks([]models.Task{}, nil)))
+		return
+	}
 
-    // Render the page with the logged-in state and the user data
-    Render(ctx, home.Index(*user, nil,formattedDate,components.Tasks(*tasks)))
+	// Render the page with the logged-in state and the user data
+	Render(ctx, home.Index(*user, nil, formattedDate, components.Tasks(*tasks, nil)))
 }
 
 func (ph *pageHandler) Login(ctx *gin.Context) {
-	firebase, _ := ctx.Cookie("firebase_token")
-	if firebase != "" {
+	userId, errC := CookieAuth(ctx, ph.firebaseAuth)
+	if errC == nil || userId != "" {
 		ctx.Redirect(http.StatusFound, "/")
+		return
 	}
 	Render(ctx, view_auth.Login(nil))
 }
 func (ph *pageHandler) Register(ctx *gin.Context) {
-	firebase, _ := ctx.Cookie("firebase_token")
-	if firebase != "" {
+	userId, errC := CookieAuth(ctx, ph.firebaseAuth)
+	if errC == nil || userId != "" {
 		ctx.Redirect(http.StatusFound, "/")
+		return
 	}
 	Render(ctx, view_auth.Register(nil))
 }
